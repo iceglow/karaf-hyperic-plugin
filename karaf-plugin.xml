@@ -1,0 +1,77 @@
+<?xml version="1.0"?>
+<!DOCTYPE plugin [
+	<!ENTITY process-metrics SYSTEM "/pdk/plugins/process-metrics.xml">
+]>
+<plugin package="com.bisnode.hyperic.hq.plugin.karaf" name="karaf">
+
+  <property name="PLUGIN_VERSION" value="0.1.0"/>
+
+	<classpath>
+		<include name="pdk/lib/mx4j"/>
+	</classpath>
+	
+	<filter name="template" value="${OBJECT_NAME}:${alias}"/>
+
+  <metrics name="Class Loading Metrics">
+    <metric name="Loaded Class Count" indicator="false" category="THROUGHPUT"/>
+    <metric name="Total Loaded Class Count" indicator="false" category="THROUGHPUT"/>
+    <metric name="Unloaded Class Count" indicator="false" category="THROUGHPUT"/>
+  </metrics>
+
+  <metrics name="Compilation">
+    <metric name="Total Compilation Time" indicator="false" category="THROUGHPUT" collectionType="trendsup" units="ms"/>
+  </metrics>
+
+  <metrics name="Garbage Collector">
+    <metric name="Collection Count" indicator="false" category="THROUGHPUT" collectionType="trendsup"/>
+    <metric name="Collection Time" indicator="false" category="THROUGHPUT" collectionType="trendsup"/>
+  </metrics>
+
+  <metrics name="Memory">
+    <metric name="Object Pending Finalization Count" category="THROUGHPUT" indicator="false"/>
+  </metrics>
+
+  <metrics name="Threading">
+    <metric name="Thread Count" category="UTILIZATION" indicator="false"/>
+    <metric name="Daemon Thread Count" category="UTILIZATION" indicator="false"/>
+  </metrics>
+
+	<server name="Karaf" version="2.x">
+
+    <property name="HAS_BUILTIN_SERVICES" value="true"/>
+    <property name="PROC_HOME_PROPERTY" value="karaf.home"/>
+    <property name="domain" value="org.apache.karaf"/>
+
+		<config>
+			<option name="jmx.url" description="JMX URL to MBeanServer" default="service:jmx:rmi:///jndi/rmi://localhost:1099/karaf-root"/>
+			<option name="jmx.username" description="JMX username" optional="true" default="karaf"/>
+			<option name="jmx.password" description="JMX password" optional="true" default="karaf" type="secret"/>
+			<option name="process.query" description="Process Query" default="State.Name.eq=java,Args.*.ct=karaf.base"/>
+		</config>
+
+    <metric name="Availability" template="sigar:Type=ProcState,Arg=%process.query%:State" indicator="true"/>
+		&process-metrics;
+
+		<property name="OBJECT_NAME" value="java.lang:type=ClassLoading"/>
+		<metrics include="Class Loading Metrics"/>
+
+		<property name="OBJECT_NAME" value="java.lang:type=Compilation"/>
+		<metrics include="Compilation"/>
+
+		<property name="OBJECT_NAME" value="java.lang:type=Memory"/>
+		<metrics include="Memory"/>
+
+		<property name="OBJECT_NAME" value="java.lang:type=Threading"/>
+		<metrics include="Threading"/>
+    <!-- Plugins -->
+    <plugin type="autoinventory" class="org.hyperic.hq.product.jmx.MxServerDetector"/>
+    <plugin type="measurement" class="org.hyperic.hq.product.jmx.MxMeasurementPlugin"/>
+
+    <service name="Java GC">
+      <plugin type="autoinventory"/>
+      <property name="OBJECT_NAME" value="java.lang:type=GarbageCollector,name=*"/>
+      <metrics include="Garbage Collector"/>
+    </service>
+
+  </server>
+</plugin>
